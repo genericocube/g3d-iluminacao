@@ -15,6 +15,7 @@ vec4 position(mat4 transformProjection, vec4 vertexPosition)
 }
 #endif // VERTEX
 
+#ifdef PIXEL
 vec4 packDepth(float depth)
 {
     const vec4 bitShift = vec4(1.0, 255.0, 65025.0, 16581375.0);
@@ -29,3 +30,4 @@ vec4 effect(vec4 color, Image texture, vec2 texture_coords, vec2 screen_coords)
 {
     return packDepth(gl_FragCoord.z);
 }
+#endif // PIXEL

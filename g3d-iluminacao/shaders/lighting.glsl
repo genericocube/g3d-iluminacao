@@ -47,6 +47,7 @@ varying highp vec2 vTexCoord;
 varying highp vec4 vVertexColor;
 varying highp vec4 vShadowPosition;
 
+#ifdef VERTEX
 mat3 getNormalMatrix(mat4 transform)
 {
     mat3 m = mat3(transform);
@@ -60,6 +61,7 @@ mat3 getNormalMatrix(mat4 transform)
 
     return mat3(cross(b, c), cross(c, a), cross(a, b)) / determinant;
 }
+#endif // VERTEX
 
 #ifdef VERTEX
 vec4 position(mat4 transformProjection, vec4 vertexPosition)
@@ -81,6 +83,7 @@ vec4 position(mat4 transformProjection, vec4 vertexPosition)
 
 #endif // VERTEX
 
+#ifdef PIXEL
 float unpackDepth(vec4 packedDepth)
 {
     return dot(packedDepth, vec4(1.0, 1.0/255.0, 1.0/65025.0, 1.0/16581375.0));
@@ -172,3 +175,4 @@ vec4 effect(vec4 color, Image texture, vec2 texture_coords, vec2 screen_coords)
     result += emissiveColor * emissiveStrength;
     return vec4(result, texel.a * vVertexColor.a * color.a);
 }
+#endif // PIXEL
