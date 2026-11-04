@@ -3,34 +3,34 @@
 
 #define MAX_POINT_LIGHTS 4
 
-uniform mat4 modelMatrix;
-uniform mat4 viewMatrix;
-uniform mat4 projectionMatrix;
-uniform mat4 lightViewProjection;
+uniform highp mat4 modelMatrix;
+uniform highp mat4 viewMatrix;
+uniform highp mat4 projectionMatrix;
+uniform highp mat4 lightViewProjection;
 
 uniform Image shadowMap;
-uniform vec2 shadowTexelSize;
-uniform vec3 lightDirection;
-uniform vec3 directionalColor;
-uniform float directionalIntensity;
-uniform vec3 ambientColor;
-uniform vec3 cameraPosition;
+uniform highp vec2 shadowTexelSize;
+uniform highp vec3 lightDirection;
+uniform highp vec3 directionalColor;
+uniform highp float directionalIntensity;
+uniform highp vec3 ambientColor;
+uniform highp vec3 cameraPosition;
 
-uniform vec3 pointPosition[MAX_POINT_LIGHTS];
-uniform vec3 pointColor[MAX_POINT_LIGHTS];
-uniform float pointIntensity[MAX_POINT_LIGHTS];
-uniform float pointRange[MAX_POINT_LIGHTS];
+uniform highp vec3 pointPosition[MAX_POINT_LIGHTS];
+uniform highp vec3 pointColor[MAX_POINT_LIGHTS];
+uniform highp float pointIntensity[MAX_POINT_LIGHTS];
+uniform highp float pointRange[MAX_POINT_LIGHTS];
 
-uniform float shadowBias;
-uniform float shadowStrength;
-uniform bool shadowsEnabled;
-uniform bool receivesShadows;
-uniform bool isCanvasEnabled;
+uniform highp float shadowBias;
+uniform highp float shadowStrength;
+uniform highp bool shadowsEnabled;
+uniform highp bool receivesShadows;
+uniform highp bool isCanvasEnabled;
 
-uniform float materialSpecularStrength;
-uniform float materialShininess;
-uniform vec3 emissiveColor;
-uniform float emissiveStrength;
+uniform highp float materialSpecularStrength;
+uniform highp float materialShininess;
+uniform highp vec3 emissiveColor;
+uniform highp float emissiveStrength;
 
 #ifdef VERTEX
 attribute vec3 VertexNormal;

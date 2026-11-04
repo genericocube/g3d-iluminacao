@@ -1,8 +1,8 @@
 // feito por generico_cube
 // Directional shadow-map pass. Geometry depth testing is provided by LÖVE.
 
-uniform mat4 modelMatrix;
-uniform mat4 lightViewProjection;
+uniform highp mat4 modelMatrix;
+uniform highp mat4 lightViewProjection;
 
 vec4 position(mat4 transformProjection, vec4 vertexPosition)
 {
