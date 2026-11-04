@@ -297,6 +297,8 @@ function Lighting.new(options)
     self._visibleLights = {}
     self._lightCount = 0
     self._lastLightVP = {}
+    self._shadowVP = {} -- light matrix the shadow map was actually drawn with
+    for i = 1, 16 do self._shadowVP[i] = 0 end
     self._frame = 0
     self._lastShadowFrame = -math.huge
     self._shadowValid = false
@@ -933,6 +935,10 @@ function Lighting:renderShadows()
 
     love.graphics.pop()
 
+    -- the main pass must read the map with the matrix it was drawn with, even when the
+    -- shadow map is only redrawn every few frames
+    for i = 1, 16 do self._shadowVP[i] = vp[i] end
+
     self._shadowValid = true
     self._lastShadowFrame = self._frame
     self.stats.shadowUpdated = true
@@ -949,7 +955,7 @@ function Lighting:_sendSceneUniforms(shader)
 
     send(shader, "viewMatrix", camera.viewMatrix)
     send(shader, "projectionMatrix", camera.projectionMatrix)
-    send(shader, "lightViewProjection", self.lightViewProjection)
+    send(shader, "lightViewProjection", self._shadowVP)
     send(shader, "lightDirection", self.direction)
     send(shader, "directionalColor", self.directionalColor)
     send(shader, "directionalIntensity", self.directionalIntensity)

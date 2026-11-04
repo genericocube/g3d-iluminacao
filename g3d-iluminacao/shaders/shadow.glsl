@@ -7,11 +7,11 @@ uniform highp mat4 lightViewProjection;
 
 vec4 position(mat4 transformProjection, vec4 vertexPosition)
 {
-    vec4 clipPosition = lightViewProjection * modelMatrix * vertexPosition;
-
-    // LÖVE render-to-canvas targets have vertically flipped texture coordinates.
-    clipPosition.y = -clipPosition.y;
-    return clipPosition;
+    // No y flip here: the shadow map is only ever read back by lighting.glsl with the same
+    // light matrix, so writing and reading in the GPU's native orientation keeps them in sync.
+    // (Flipping only the write mirrored every shadow around the center of the shadow box,
+    // and that center moves with the camera, so shadows seemed to slide while moving.)
+    return lightViewProjection * modelMatrix * vertexPosition;
 }
 #endif // VERTEX
 
