@@ -1,6 +1,7 @@
 // feito por generico_cube
 // Directional shadow-map pass. Geometry depth testing is provided by LÖVE.
 
+#ifdef VERTEX
 uniform highp mat4 modelMatrix;
 uniform highp mat4 lightViewProjection;
 
@@ -12,6 +13,7 @@ vec4 position(mat4 transformProjection, vec4 vertexPosition)
     clipPosition.y = -clipPosition.y;
     return clipPosition;
 }
+#endif // VERTEX
 
 vec4 packDepth(float depth)
 {

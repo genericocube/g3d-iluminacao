@@ -3,11 +3,19 @@
 
 #define MAX_POINT_LIGHTS 4
 
+// Vertex-stage uniforms: transforms are only needed to build world/clip positions.
+#ifdef VERTEX
 uniform highp mat4 modelMatrix;
 uniform highp mat4 viewMatrix;
 uniform highp mat4 projectionMatrix;
 uniform highp mat4 lightViewProjection;
+uniform bool isCanvasEnabled;
 
+attribute vec3 VertexNormal;
+#endif
+
+// Pixel-stage uniforms: lighting and material data are only used for shading.
+#ifdef PIXEL
 uniform Image shadowMap;
 uniform highp vec2 shadowTexelSize;
 uniform highp vec3 lightDirection;
@@ -25,22 +33,19 @@ uniform highp float shadowBias;
 uniform highp float shadowStrength;
 uniform bool shadowsEnabled;
 uniform bool receivesShadows;
-uniform bool isCanvasEnabled;
 
 uniform highp float materialSpecularStrength;
 uniform highp float materialShininess;
 uniform highp vec3 emissiveColor;
 uniform highp float emissiveStrength;
-
-#ifdef VERTEX
-attribute vec3 VertexNormal;
 #endif
 
-varying vec3 vWorldPosition;
-varying vec3 vWorldNormal;
-varying vec2 vTexCoord;
-varying vec4 vVertexColor;
-varying vec4 vShadowPosition;
+// Explicit matching precision prevents GLES vertex/pixel varying mismatches.
+varying highp vec3 vWorldPosition;
+varying highp vec3 vWorldNormal;
+varying highp vec2 vTexCoord;
+varying highp vec4 vVertexColor;
+varying highp vec4 vShadowPosition;
 
 mat3 getNormalMatrix(mat4 transform)
 {
