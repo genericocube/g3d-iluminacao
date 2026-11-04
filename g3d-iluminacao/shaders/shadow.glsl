@@ -21,9 +21,9 @@ vec4 packDepth(float depth)
     const vec4 bitShift = vec4(1.0, 255.0, 65025.0, 16581375.0);
     const vec4 bitMask = vec4(1.0/255.0, 1.0/255.0, 1.0/255.0, 0.0);
 
-    vec4 packed = fract(depth * bitShift);
-    packed -= packed.yzww * bitMask;
-    return packed;
+    vec4 encodedDepth = fract(depth * bitShift);
+    encodedDepth -= encodedDepth.yzww * bitMask;
+    return encodedDepth;
 }
 
 vec4 effect(vec4 color, Image texture, vec2 texture_coords, vec2 screen_coords)
