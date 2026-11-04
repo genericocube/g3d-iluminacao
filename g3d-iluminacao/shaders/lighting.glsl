@@ -60,7 +60,7 @@ vec4 position(mat4 transformProjection, vec4 vertexPosition)
 
     vWorldPosition = worldPosition.xyz;
     vWorldNormal = normalize(getNormalMatrix(modelMatrix) * VertexNormal);
-    vTexCoord = VertexTexCoord;
+    vTexCoord = VertexTexCoord.xy;
     vVertexColor = VertexColor;
     vShadowPosition = lightViewProjection * worldPosition;
 
