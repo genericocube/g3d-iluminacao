@@ -9,7 +9,7 @@ uniform highp mat4 modelMatrix;
 uniform highp mat4 viewMatrix;
 uniform highp mat4 projectionMatrix;
 uniform highp mat4 lightViewProjection;
-uniform bool isCanvasEnabled;
+uniform float isCanvasEnabled;
 
 attribute vec3 VertexNormal;
 #endif
@@ -31,8 +31,8 @@ uniform highp float pointRange[MAX_POINT_LIGHTS];
 
 uniform highp float shadowBias;
 uniform highp float shadowStrength;
-uniform bool shadowsEnabled;
-uniform bool receivesShadows;
+uniform float shadowsEnabled;
+uniform float receivesShadows;
 
 uniform highp float materialSpecularStrength;
 uniform highp float materialShininess;
@@ -75,7 +75,7 @@ vec4 position(mat4 transformProjection, vec4 vertexPosition)
     vShadowPosition = lightViewProjection * worldPosition;
 
     vec4 clipPosition = projectionMatrix * viewMatrix * worldPosition;
-    if (isCanvasEnabled)
+    if (isCanvasEnabled > 0.5)
         clipPosition.y = -clipPosition.y;
 
     return clipPosition;
@@ -130,7 +130,7 @@ vec4 effect(vec4 color, Image texture, vec2 texture_coords, vec2 screen_coords)
     float directionalDiffuse = max(dot(normal, toDirectionalLight), 0.0);
     float directionalShadow = 0.0;
 
-    if (shadowsEnabled && receivesShadows && directionalDiffuse > 0.0)
+    if (shadowsEnabled > 0.5 && receivesShadows > 0.5 && directionalDiffuse > 0.0)
         directionalShadow = calculateShadow(normal, toDirectionalLight);
 
     float directionalVisibility = 1.0 - directionalShadow;

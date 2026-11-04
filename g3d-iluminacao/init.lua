@@ -326,8 +326,8 @@ function Lighting:_sendSceneUniforms(shader)
     shader:send("shadowTexelSize", {self.shadowTexelSize, self.shadowTexelSize})
     shader:send("shadowBias", self.shadowBias)
     shader:send("shadowStrength", self.shadowStrength)
-    shader:send("shadowsEnabled", self.shadowsEnabled)
-    shader:send("isCanvasEnabled", love.graphics.getCanvas() ~= nil)
+    shader:send("shadowsEnabled", self.shadowsEnabled and 1 or 0)
+    shader:send("isCanvasEnabled", love.graphics.getCanvas() ~= nil and 1 or 0)
 
     local positions, colors, intensities, ranges = {}, {}, {}, {}
     for i = 1, MAX_POINT_LIGHTS do
@@ -353,7 +353,7 @@ end
 
 function Lighting:_drawEntry(entry, shader)
     shader:send("modelMatrix", entry.model.matrix)
-    shader:send("receivesShadows", entry.receivesShadows)
+    shader:send("receivesShadows", entry.receivesShadows and 1 or 0)
     shader:send("materialSpecularStrength", entry.specularStrength)
     shader:send("materialShininess", entry.shininess)
     shader:send("emissiveColor", entry.emissiveColor)
