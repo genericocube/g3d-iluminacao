@@ -32,7 +32,9 @@ uniform float materialShininess;
 uniform vec3 emissiveColor;
 uniform float emissiveStrength;
 
+#ifdef VERTEX
 attribute vec3 VertexNormal;
+#endif
 
 varying vec3 vWorldPosition;
 varying vec3 vWorldNormal;
@@ -54,6 +56,7 @@ mat3 getNormalMatrix(mat4 transform)
     return mat3(cross(b, c), cross(c, a), cross(a, b)) / determinant;
 }
 
+#ifdef VERTEX
 vec4 position(mat4 transformProjection, vec4 vertexPosition)
 {
     vec4 worldPosition = modelMatrix * vertexPosition;
@@ -70,6 +73,8 @@ vec4 position(mat4 transformProjection, vec4 vertexPosition)
 
     return clipPosition;
 }
+
+#endif // VERTEX
 
 float unpackDepth(vec4 packedDepth)
 {
