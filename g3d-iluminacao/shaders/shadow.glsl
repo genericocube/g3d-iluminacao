@@ -16,7 +16,7 @@ vec4 position(mat4 transformProjection, vec4 vertexPosition)
 vec4 packDepth(float depth)
 {
     const vec4 bitShift = vec4(1.0, 255.0, 65025.0, 16581375.0);
-    const vec4 bitMask = vec4(0.0, 1.0/255.0, 1.0/255.0, 1.0/255.0);
+    const vec4 bitMask = vec4(1.0/255.0, 1.0/255.0, 1.0/255.0, 0.0);
 
     vec4 packed = fract(depth * bitShift);
     packed -= packed.yzww * bitMask;
