@@ -23,9 +23,9 @@ uniform highp float pointRange[MAX_POINT_LIGHTS];
 
 uniform highp float shadowBias;
 uniform highp float shadowStrength;
-uniform highp bool shadowsEnabled;
-uniform highp bool receivesShadows;
-uniform highp bool isCanvasEnabled;
+uniform bool shadowsEnabled;
+uniform bool receivesShadows;
+uniform bool isCanvasEnabled;
 
 uniform highp float materialSpecularStrength;
 uniform highp float materialShininess;
