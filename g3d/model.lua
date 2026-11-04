@@ -7,7 +7,6 @@ local loadObjFile = require(g3d.path .. ".objloader")
 local collisions = require(g3d.path .. ".collisions")
 local vectors = require(g3d.path .. ".vectors")
 local camera = require(g3d.path .. ".camera")
-local lighting = require(g3d.path .. ".lighting")
 local vectorCrossProduct = vectors.crossProduct
 local vectorNormalize = vectors.normalize
 
@@ -52,11 +51,6 @@ local function newModel(verts, texture, translation, rotation, scale)
     self.mesh = love.graphics.newMesh(self.vertexFormat, self.verts, "triangles")
     self.mesh:setTexture(self.texture)
     self.matrix = newMatrix()
-    self.normalMatrix = newMatrix()
-    -- lighting properties: lit models are drawn with the lighting shader
-    self.lit = true
-    self.shininess = 32
-    self.specularStrength = 0.3
     if type(scale) == "number" then scale = {scale, scale, scale} end
     self:setTransform(translation or {0,0,0}, rotation or {0,0,0}, scale or {1,1,1})
 
@@ -144,32 +138,6 @@ end
 -- update the model's transformation matrix
 function model:updateMatrix()
     self.matrix:setTransformationMatrix(self.translation, self.rotation, self.scale)
-    self:updateNormalMatrix()
-end
-
--- the normal matrix is the cofactor matrix of the model matrix's upper 3x3
--- (proportional to its inverse transpose), so normals stay correct under non-uniform scaling
--- the shader normalizes the result, so the missing determinant factor doesn't matter
-function model:updateNormalMatrix()
-    local m, n = self.matrix, self.normalMatrix
-    local a, b, c = m[1], m[2], m[3]
-    local d, e, f = m[5], m[6], m[7]
-    local g, h, i = m[9], m[10], m[11]
-    n[1], n[2],  n[3]  = e*i - f*h, f*g - d*i, d*h - e*g
-    n[5], n[6],  n[7]  = c*h - b*i, a*i - c*g, b*g - a*h
-    n[9], n[10], n[11] = b*f - c*e, c*d - a*f, a*e - b*d
-end
-
--- set how shiny the model looks under lights
--- shininess is the size of the highlight (higher = smaller), strength is its brightness
-function model:setMaterial(shininess, specularStrength)
-    self.shininess = shininess or self.shininess
-    self.specularStrength = specularStrength or self.specularStrength
-end
-
--- unlit models ignore all lights and are drawn at full brightness (skyboxes, UI, etc)
-function model:setLit(lit)
-    self.lit = lit and true or false
 end
 
 -- align's the model matrix to a given point
@@ -177,33 +145,25 @@ end
 function model:lookAtFrom(pos, target, up)
     local pos = pos or self.translation
     self.matrix:lookAtFrom(pos, target, up or {0,0,1}, self.scale)
-    self:updateNormalMatrix()
 end
 
 function model:lookAt(target, up)
     self.matrix:lookAtFrom(self.translation, target, up or {0,0,1}, self.scale)
-    self:updateNormalMatrix()
-end-- draw the model
--- lit models use the lighting shader unless another shader is given
+end
+
+
+
+
+-- draw the model
 function model:draw(shader)
-    if not shader then
-        shader = (self.lit and g3d.lightShader) or self.shader
-    end
+    local shader = shader or self.shader
     local previousShader = love.graphics.getShader()
     love.graphics.setShader(shader)
     shader:send("modelMatrix", self.matrix)
     shader:send("viewMatrix", camera.viewMatrix)
     shader:send("projectionMatrix", camera.projectionMatrix)
-    if shader:hasUniform "normalMatrix" then
-        shader:send("normalMatrix", self.normalMatrix)
-    end
     if shader:hasUniform "isCanvasEnabled" then
         shader:send("isCanvasEnabled", love.graphics.getCanvas() ~= nil)
-    end
-    if shader == g3d.lightShader then
-        lighting.apply(shader)
-        shader:send("shininess", self.shininess)
-        shader:send("specularStrength", self.specularStrength)
     end
     love.graphics.draw(self.mesh)
     love.graphics.setShader(previousShader)

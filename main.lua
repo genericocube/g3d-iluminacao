@@ -1,121 +1,330 @@
--- written by groverbuger for g3d
--- MIT license
--- lighting demo: the earth spins under a sun and an orbiting orange light
--- if the files in assets/ are missing, the meshes and textures are generated in code
+-- g3d-iluminacao demo
+-- feito por generico_cube
+-- Run the repository demo with: love .
 
-local g3d = require "g3d"
-local lighting = g3d.lighting
+local g3d = require("g3d")
+local Lighting = require("g3d-iluminacao")
 
-----------------------------------------------------------------------------------------------------
--- assets (loaded from disk when present, generated otherwise)
-----------------------------------------------------------------------------------------------------
+local lighting
+local whiteTexture
+local warmLight
+local coolLight
+local warmMarker
+local coolMarker
+local movingSphere
+local flashlight
+local torch
+local time = 0
+local lightAngle = 0
+local showHelp = true
+local qualities = { "low", "medium", "high", "ultra" }
+local qualityIndex = 3
+local toon, rim, fog = false, false, false
 
-local function loadTexture(path, generate)
-    if love.filesystem.getInfo(path) then return love.graphics.newImage(path) end
-    return love.graphics.newImage(generate())
+local function vertex(out, position, normal, u, v, color)
+    out[#out + 1] = {
+        position[1], position[2], position[3],
+        u or 0, v or 0,
+        normal[1], normal[2], normal[3],
+        color[1], color[2], color[3], 1
+    }
 end
 
--- fills an image by calling fn(u, v) -> r, g, b for every pixel
-local function paint(size, fn)
-    local data = love.image.newImageData(size * 2, size)
-    data:mapPixel(function(x, y)
-        local r, g, b = fn(x / (size * 2), y / size)
-        return r, g, b, 1
-    end)
-    return data
+local function triangle(out, a, b, c, normalA, normalB, normalC, color)
+    vertex(out, a, normalA or a, 0, 0, color)
+    vertex(out, b, normalB or b, 1, 0, color)
+    vertex(out, c, normalC or c, 1, 1, color)
 end
 
--- smooth fake noise built from sines, x frequencies are whole numbers so the texture tiles around
-local function noise(u, v)
-    local x, y = u * 2 * math.pi, v * math.pi
-    return (math.sin(x * 6) * math.sin(y * 5) + math.sin(x * 13 + y * 7) * 0.5 + math.sin(x * 29 - y * 23) * 0.25) / 1.75
+local function addQuad(out, a, b, c, d, normal, color)
+    triangle(out, a, b, c, normal, normal, normal, color)
+    triangle(out, a, c, d, normal, normal, normal, color)
 end
 
-local function generateEarth()
-    return paint(256, function(u, v)
-        local n = noise(u, v)
-        if math.abs(v - 0.5) > 0.44 then return 0.9, 0.95, 1 end -- ice caps
-        if n > 0.15 then return 0.2 + n * 0.2, 0.5 + n * 0.2, 0.15 end -- land
-        return 0.05, 0.2 + n * 0.1, 0.55 + n * 0.2 -- sea
-    end)
-end
+local function makeCube(color)
+    local vertices = {}
+    local faces = {
+        {{{ 0.5,-0.5,-0.5},{ 0.5, 0.5,-0.5},{ 0.5, 0.5, 0.5},{ 0.5,-0.5, 0.5}}, { 1, 0, 0}},
+        {{{-0.5, 0.5,-0.5},{-0.5,-0.5,-0.5},{-0.5,-0.5, 0.5},{-0.5, 0.5, 0.5}}, {-1, 0, 0}},
+        {{{ 0.5, 0.5,-0.5},{-0.5, 0.5,-0.5},{-0.5, 0.5, 0.5},{ 0.5, 0.5, 0.5}}, { 0, 1, 0}},
+        {{{-0.5,-0.5,-0.5},{ 0.5,-0.5,-0.5},{ 0.5,-0.5, 0.5},{-0.5,-0.5, 0.5}}, { 0,-1, 0}},
+        {{{-0.5,-0.5, 0.5},{ 0.5,-0.5, 0.5},{ 0.5, 0.5, 0.5},{-0.5, 0.5, 0.5}}, { 0, 0, 1}},
+        {{{-0.5, 0.5,-0.5},{ 0.5, 0.5,-0.5},{ 0.5,-0.5,-0.5},{-0.5,-0.5,-0.5}}, { 0, 0,-1}}
+    }
 
-local function generateMoon()
-    return paint(128, function(u, v)
-        local c = 0.55 + noise(u * 2 % 1, v) * 0.15
-        return c, c, c
-    end)
-end
-
-local function generateStars()
-    love.math.setRandomSeed(1)
-    local data = love.image.newImageData(1024, 512)
-    for _ = 1, 700 do
-        local c = 0.4 + love.math.random() * 0.6
-        data:setPixel(love.math.random(0, 1023), love.math.random(0, 511), c, c, c, 1)
+    for i = 1, #faces do
+        local face = faces[i]
+        addQuad(vertices, face[1][1], face[1][2], face[1][3], face[1][4], face[2], color)
     end
-    return data
+
+    return vertices
 end
 
-local sphere = love.filesystem.getInfo("assets/sphere.obj") and "assets/sphere.obj" or g3d.primitives.sphere()
+local function makePlane(width, depth, color)
+    local vertices = {}
+    local x, y = width * 0.5, depth * 0.5
+    addQuad(vertices,
+        {-x,-y,0}, {x,-y,0}, {x,y,0}, {-x,y,0},
+        {0,0,1}, color
+    )
+    return vertices
+end
 
-local earth = g3d.newModel(sphere, loadTexture("assets/earth.png", generateEarth), {4,0,0})
-local moon = g3d.newModel(sphere, loadTexture("assets/moon.png", generateMoon), {4,5,0}, nil, 0.5)
-local background = g3d.newModel(sphere, loadTexture("assets/starfield.png", generateStars), nil, nil, 500)
+local function spherePoint(latitude, longitude)
+    local radius = math.cos(latitude)
+    return {
+        radius * math.cos(longitude),
+        radius * math.sin(longitude),
+        math.sin(latitude)
+    }
+end
 
--- the sky shouldn't react to lights
-background:setLit(false)
--- the moon is rough, the ocean on earth is a little shiny
-moon:setMaterial(8, 0.05)
-earth:setMaterial(48, 0.4)
+local function makeSphere(color, slices, stacks)
+    local vertices = {}
+    slices = slices or 18
+    stacks = stacks or 12
 
-----------------------------------------------------------------------------------------------------
--- lights
-----------------------------------------------------------------------------------------------------
+    for y = 0, stacks - 1 do
+        local lat0 = -math.pi * 0.5 + math.pi * y / stacks
+        local lat1 = -math.pi * 0.5 + math.pi * (y + 1) / stacks
 
-lighting.setAmbient(0.12, 0.12, 0.18)
-lighting.setSun(1, 0.5, -0.4, 1, 0.95, 0.85, 0.9)
-local orbitLight = lighting.newLight(4, 6, 2, 1, 0.45, 0.15, 14, 1.4)
+        for x = 0, slices - 1 do
+            local lon0 = math.pi * 2 * x / slices
+            local lon1 = math.pi * 2 * (x + 1) / slices
 
-g3d.camera.lookAt(-8, 0, 3, 4, 0, 0)
+            local a = spherePoint(lat0, lon0)
+            local b = spherePoint(lat0, lon1)
+            local c = spherePoint(lat1, lon1)
+            local d = spherePoint(lat1, lon0)
 
-local timer = 0
+            addQuad(vertices, a, b, c, d, nil, color)
+        end
+    end
+
+    return vertices
+end
+
+local function createModel(vertices, x, y, z, sx, sy, sz)
+    local model = g3d.newModel(
+        vertices,
+        whiteTexture,
+        {x or 0, y or 0, z or 0},
+        {0, 0, 0},
+        {sx or 1, sy or sx or 1, sz or sx or 1}
+    )
+    return model
+end
+
+local function register(model, options)
+    lighting:addModel(model, options)
+    return model
+end
+
+local function onOff(value)
+    return value and "ON" or "OFF"
+end
+
+local function makeTextPanel()
+    local stats = lighting:getStats()
+    love.graphics.push("all")
+    love.graphics.setDepthMode()
+    love.graphics.setColor(0.025, 0.035, 0.055, 0.86)
+    love.graphics.rectangle("fill", 16, 16, 470, showHelp and 262 or 88, 8, 8)
+
+    love.graphics.setColor(0.92, 0.96, 1, 1)
+    love.graphics.print("g3d-iluminacao  |  real-time lighting demo", 30, 28)
+    love.graphics.print(("Quality: %s (shadow map %d)   |   FPS: %d")
+        :format(lighting.quality, lighting.shadowResolution, love.timer.getFPS()), 30, 50)
+    love.graphics.print(("Lights: %d/%d   Models: %d drawn, %d culled   Shadow redraws: %d")
+        :format(stats.lightsActive, stats.lightsTotal, stats.modelsDrawn, stats.modelsCulled, stats.shadowUpdates), 30, 72)
+
+    if showHelp then
+        love.graphics.setColor(0.72, 0.82, 0.94, 1)
+        love.graphics.print("WASD / Space / Shift: move     Mouse: look (click to capture)", 30, 104)
+        love.graphics.print(("F: shadows %s     G: local lights %s     L: flashlight %s")
+            :format(onOff(lighting.shadowsEnabled), onOff(lighting.lightsEnabled), onOff(flashlight.enabled)), 30, 126)
+        love.graphics.print(("T: toon shading %s     B: rim light %s     V: fog %s")
+            :format(onOff(toon), onOff(rim), onOff(fog)), 30, 148)
+        love.graphics.print("Q: quality preset (low / medium / high / ultra)", 30, 170)
+        love.graphics.print("Left / Right arrows: rotate the sun     R: reset camera", 30, 192)
+        love.graphics.print("Light types: sun, point (orange + blue), spot (flashlight),", 30, 214)
+        love.graphics.print("flickering torch (green) and a directional fill light.", 30, 236)
+        love.graphics.print("H: hide this panel", 30, 258)
+    else
+        love.graphics.setColor(0.72, 0.82, 0.94, 1)
+        love.graphics.print("Press H to show controls", 30, 98)
+    end
+
+    love.graphics.pop()
+end
+
+function love.load()
+    love.window.setTitle("g3d-iluminacao | Real-time lighting")
+    love.graphics.setBackgroundColor(0.035, 0.045, 0.065, 1)
+
+    local imageData = love.image.newImageData(1, 1)
+    imageData:setPixel(0, 0, 1, 1, 1, 1)
+    whiteTexture = love.graphics.newImage(imageData)
+    whiteTexture:setFilter("nearest", "nearest")
+
+    lighting = Lighting.new({
+        quality = qualities[qualityIndex],
+        shadowRange = 19,
+        shadowDistance = 40,
+        shadowBias = 0.0018,
+        shadowStrength = 0.92,
+        directionalColor = {1.0, 0.92, 0.78},
+        directionalIntensity = 0.85
+    })
+    lighting:setDirection(0.42, 0.34, -0.84)
+    -- hemisphere ambient: bluish sky on top, warm ground bounce below
+    lighting:setHemisphere({0.20, 0.24, 0.32}, {0.12, 0.10, 0.08})
+
+    -- A large receiver plane, plus several solid objects that cast shadows.
+    register(createModel(makePlane(28, 28, {0.48, 0.52, 0.60}), 0, 0, -0.08),
+        {castsShadow = false, specularStrength = 0.04})
+
+    register(createModel(makeCube({0.78, 0.24, 0.12}), -3.8, 0.0, 0.85, 1.7, 1.7, 1.7),
+        {specularStrength = 0.24, shininess = 40})
+    register(createModel(makeCube({0.16, 0.42, 0.72}), 0.0, 1.8, 0.65, 1.3, 1.3, 1.3),
+        {specularStrength = 0.38, shininess = 64})
+    register(createModel(makeCube({0.72, 0.62, 0.20}), 3.8, 0.4, 1.15, 1.4, 1.4, 2.3),
+        {specularStrength = 0.2})
+
+    register(createModel(makeSphere({0.25, 0.72, 0.42}), -1.4, -3.0, 0.85, 1.7),
+        {specularStrength = 0.52, shininess = 80})
+    movingSphere = register(createModel(makeSphere({0.72, 0.30, 0.68}), 2.0, -3.0, 1.0, 1.35),
+        {specularStrength = 0.46, shininess = 72})
+
+    -- Colored point lights illuminate nearby surfaces. Their marker spheres are emissive.
+    warmLight = lighting:addPointLight({
+        position = {-3.2, -1.0, 2.6},
+        color = {1.0, 0.34, 0.12},
+        intensity = 3.5,
+        range = 8
+    })
+    coolLight = lighting:addPointLight({
+        position = {3.0, 2.5, 2.8},
+        color = {0.12, 0.42, 1.0},
+        intensity = 3.2,
+        range = 8
+    })
+
+    warmMarker = register(createModel(makeSphere({1.0, 0.42, 0.16}, 14, 9),
+        warmLight.position[1], warmLight.position[2], warmLight.position[3], 0.28),
+        {castsShadow = false, receivesShadows = false, emissiveColor = {1.0, 0.28, 0.08}, emissiveStrength = 2.8})
+    coolMarker = register(createModel(makeSphere({0.18, 0.48, 1.0}, 14, 9),
+        coolLight.position[1], coolLight.position[2], coolLight.position[3], 0.28),
+        {castsShadow = false, receivesShadows = false, emissiveColor = {0.10, 0.32, 1.0}, emissiveStrength = 2.8})
+
+    -- a flickering torch (point light with flicker)
+    torch = lighting:addPointLight({
+        position = {-0.5, -5.2, 1.4},
+        color = {0.35, 1.0, 0.35},
+        intensity = 2.4,
+        range = 6,
+        flicker = {amount = 0.45, speed = 9}
+    })
+
+    -- a spot light that works like a flashlight, it follows the camera
+    flashlight = lighting:addSpotLight({
+        position = {0, 0, 0},
+        direction = {1, 0, 0},
+        color = {1.0, 0.96, 0.85},
+        intensity = 3,
+        range = 28,
+        innerAngle = 12,
+        outerAngle = 26,
+        enabled = false
+    })
+
+    -- a cheap directional fill light, like moonlight from the other side (no shadows)
+    lighting:addDirectionalLight({
+        direction = {-0.5, -0.3, -0.4},
+        color = {0.35, 0.45, 0.9},
+        intensity = 0.18
+    })
+
+    g3d.camera.lookAt(10, -14, 9, 0, 0, 0.6)
+end
 
 function love.update(dt)
-    timer = timer + dt
-    moon:setTranslation(math.cos(timer)*5 + 4, math.sin(timer)*5, 0)
-    moon:setRotation(0, 0, timer - math.pi/2)
-    earth:setRotation(0, 0, timer * 0.4)
-    orbitLight:setPosition(math.cos(timer * 0.7 + math.pi) * 7 + 4, math.sin(timer * 0.7 + math.pi) * 7, 2)
+    time = time + dt
     g3d.camera.firstPersonMovement(dt)
-    if love.keyboard.isDown "escape" then
-        love.event.push "quit"
+
+    -- Animate the two point lights to show that their illumination updates every frame.
+    local warmX = -3.2 + math.cos(time * 0.85) * 1.6
+    local warmY = -1.0 + math.sin(time * 0.85) * 1.2
+    local warmZ = 2.2 + math.sin(time * 1.3) * 0.55
+    warmLight.position[1], warmLight.position[2], warmLight.position[3] = warmX, warmY, warmZ
+    warmMarker:setTranslation(warmX, warmY, warmZ)
+
+    local coolX = 3.0 + math.cos(time * 0.7 + 1.4) * 1.4
+    local coolY = 2.5 + math.sin(time * 0.7 + 1.4) * 1.6
+    local coolZ = 2.6 + math.cos(time * 1.1) * 0.45
+    coolLight.position[1], coolLight.position[2], coolLight.position[3] = coolX, coolY, coolZ
+    coolMarker:setTranslation(coolX, coolY, coolZ)
+
+    movingSphere:setTranslation(2.0, -3.0, 1.0 + math.sin(time * 1.2) * 0.55)
+    movingSphere:setRotation(0, time * 0.35, time * 0.6)
+
+    -- the flashlight follows the camera
+    local camera = g3d.camera
+    flashlight:setPosition(camera.position[1], camera.position[2], camera.position[3] - 0.15)
+    flashlight:setDirection(camera.getLookVector())
+
+    if love.keyboard.isDown("left") then lightAngle = lightAngle - dt * 0.7 end
+    if love.keyboard.isDown("right") then lightAngle = lightAngle + dt * 0.7 end
+    if lightAngle ~= 0 then
+        lighting:setDirection(math.cos(lightAngle) * 0.42, math.sin(lightAngle) * 0.42 + 0.34, -0.84)
     end
 end
 
 function love.draw()
-    earth:draw()
-    moon:draw()
-    background:draw()
-
-    -- 2D text must not be depth tested against the 3D scene
-    love.graphics.setDepthMode()
-    love.graphics.print("WASD/space/shift: move   mouse: look   1: sun   2: orange light   esc: quit", 8, 8)
-    love.graphics.setDepthMode("lequal", true)
+    love.graphics.clear(0.035, 0.045, 0.065, 1)
+    lighting:drawAll()
+    makeTextPanel()
 end
 
-function love.keypressed(key)
-    if key == "1" then
-        lighting.setSunEnabled(not lighting.sun.enabled)
-    elseif key == "2" then
-        orbitLight:setEnabled(not orbitLight.enabled)
+function love.mousepressed()
+    love.mouse.setRelativeMode(true)
+end
+
+function love.mousemoved(_, _, dx, dy)
+    if love.mouse.getRelativeMode() then
+        g3d.camera.firstPersonLook(dx, dy)
     end
 end
 
-function love.mousemoved(x,y, dx,dy)
-    g3d.camera.firstPersonLook(dx,dy)
+function love.keypressed(key)
+    if key == "escape" then
+        love.mouse.setRelativeMode(false)
+    elseif key == "f" then
+        lighting:setShadowsEnabled(not lighting.shadowsEnabled)
+    elseif key == "g" then
+        lighting:setLightsEnabled(not lighting.lightsEnabled)
+    elseif key == "l" then
+        flashlight:setEnabled(not flashlight.enabled)
+    elseif key == "t" then
+        toon = not toon
+        lighting:setToon(toon and 3 or 0)
+    elseif key == "b" then
+        rim = not rim
+        lighting:setRim(rim and {0.5, 0.75, 1.0} or nil, 3, 0.7)
+    elseif key == "v" then
+        fog = not fog
+        lighting:setFog(fog and {0.035, 0.045, 0.065} or nil, 12, 45)
+    elseif key == "q" then
+        qualityIndex = qualityIndex % #qualities + 1
+        lighting:setQuality(qualities[qualityIndex])
+    elseif key == "h" then
+        showHelp = not showHelp
+    elseif key == "r" then
+        g3d.camera.lookAt(10, -14, 9, 0, 0, 0.6)
+    end
 end
 
-function love.resize(width, height)
-    g3d.camera.resize(width, height)
+function love.quit()
+    if lighting then lighting:release() end
+    if whiteTexture then whiteTexture:release() end
 end
