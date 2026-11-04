@@ -42,13 +42,18 @@ local g3d = {
     ]],
     path = ...,
     shaderpath = (...):gsub("%.", "/") .. "/g3d.vert",
+    lightshaderpath = (...):gsub("%.", "/") .. "/light.frag",
 }
 package.loaded[g3d.path] = g3d
 
 -- the shader is what does the heavy lifting, displaying 3D meshes on your 2D monitor
 g3d.shader = love.graphics.newShader(g3d.shaderpath)
+-- the same vertex shader plus a pixel shader that does the lighting
+g3d.lightShader = love.graphics.newShader(love.filesystem.read(g3d.lightshaderpath), love.filesystem.read(g3d.shaderpath))
 g3d.newModel = require(g3d.path .. ".model")
 g3d.camera = require(g3d.path .. ".camera")
+g3d.lighting = require(g3d.path .. ".lighting")
+g3d.primitives = require(g3d.path .. ".primitives")
 g3d.collisions = require(g3d.path .. ".collisions")
 g3d.loadObj = require(g3d.path .. ".objloader")
 g3d.vectors = require(g3d.path .. ".vectors")

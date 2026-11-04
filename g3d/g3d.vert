@@ -6,6 +6,7 @@
 uniform mat4 projectionMatrix; // handled by the camera
 uniform mat4 viewMatrix;       // handled by the camera
 uniform mat4 modelMatrix;      // models send their own model matrices when drawn
+uniform mat4 normalMatrix;     // inverse-transpose of the model matrix, used to rotate normals (lighting)
 uniform bool isCanvasEnabled;  // detect when this model is being rendered to a canvas
 
 // the vertex normal attribute must be defined, as it is custom unlike the other attributes
@@ -16,6 +17,7 @@ varying vec4 worldPosition;
 varying vec4 viewPosition;
 varying vec4 screenPosition;
 varying vec3 vertexNormal;
+varying vec3 worldNormal;      // the normal rotated into world space
 varying vec4 vertexColor;
 
 vec4 position(mat4 transformProjection, vec4 vertexPosition) {
@@ -27,6 +29,7 @@ vec4 position(mat4 transformProjection, vec4 vertexPosition) {
 
     // save some data from this vertex for use in fragment shaders
     vertexNormal = VertexNormal;
+    worldNormal = (normalMatrix * vec4(VertexNormal, 0.0)).xyz;
     vertexColor = VertexColor;
 
     // for some reason models are flipped vertically when rendering to a canvas
