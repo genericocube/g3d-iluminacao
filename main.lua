@@ -3,7 +3,7 @@
 -- Run the repository demo with: love .
 
 local g3d = require("g3d")
-local Lighting = require("g3d-iluminacao")
+local Lighting = require "g3d-cube-tools.g3d-iluminacao"
 
 local lighting
 local whiteTexture
