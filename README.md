@@ -4,19 +4,20 @@
 
 ## Instalação / Installation
 
-Rode `love .` na pasta do repositório para ver a demo. Para usar no seu projeto, mantenha a pasta `g3d/` e copie a pasta `g3d-iluminacao/`:
+Rode `love .` na pasta do repositório para ver a demo. Para usar no seu projeto, mantenha a pasta `g3d/` e copie a pasta `g3d-cube-tools/` (ela contém o `g3d-iluminacao/`):
 
 ```text
 meu-jogo/
 ├── conf.lua        (use t.window.depth = 24)
 ├── main.lua
 ├── g3d/
-└── g3d-iluminacao/
-    ├── init.lua
-    └── shaders/
+└── g3d-cube-tools/
+    └── g3d-iluminacao/
+        ├── init.lua
+        └── shaders/
 ```
 
-Run `love .` in this folder to see the demo. To use it in your project, keep the `g3d/` folder and copy the `g3d-iluminacao/` folder as shown above. LÖVE 11.4+ recommended.
+Run `love .` in this folder to see the demo. To use it in your project, keep the `g3d/` folder and copy the `g3d-cube-tools/` folder (it holds `g3d-iluminacao/`) as shown above. LÖVE 11.4+ recommended.
 
 ---
 
@@ -39,7 +40,7 @@ Iluminação em tempo real para o [g3d](https://github.com/groverburger/g3d) 1.6
 
 ```lua
 local g3d = require "g3d"
-local Lighting = require "g3d-iluminacao"
+local Lighting = require "g3d-cube-tools.g3d-iluminacao"
 
 local lighting, sol
 
@@ -143,7 +144,7 @@ Real-time lighting for [g3d](https://github.com/groverburger/g3d) 1.6.0 + LÖVE 
 
 ```lua
 local g3d = require "g3d"
-local Lighting = require "g3d-iluminacao"
+local Lighting = require "g3d-cube-tools.g3d-iluminacao"
 
 local lighting
 
